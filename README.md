@@ -1,0 +1,2 @@
+# bookd
+Hub for bibliophiles
