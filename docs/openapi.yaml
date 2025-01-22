@@ -1,0 +1,2447 @@
+openapi: 3.1.0
+info:
+  title: Bookd API
+  version: "1.0.0"
+  description: >
+    A spec-first, AI-informed API for managing users, books, reviews, and more.
+    Reflects the Bookd Development Philosophy of rigor, modularity, and
+    documentation as the single source of truth.
+  x-ai-context:
+    domain: literary
+    entity_types: [user, work, author, review]
+    invariants:
+      - user-unique-email
+      - work-title-required
+servers:
+  - url: https://api.bookd.com
+    description: Production server
+    x-change-approval: required
+security:
+  - BearerAuth: []
+  - UserAuth: [user]
+  - AdminAuth: [admin]
+tags:
+  - name: Users
+    x-ai-context:
+      core_entity: true
+      sensitive_fields: [email, location]
+  - name: Publishers
+  - name: Works
+  - name: Editions
+  - name: Authors
+  - name: Genres
+  - name: Reviews
+  - name: Bookshelves
+  - name: Follows
+  - name: UserWorks
+  - name: Compatibility
+  - name: Recommendations
+  - name: HelpfulVotes
+
+paths:
+  /v1/users:
+    get:
+      tags: [Users]
+      summary: List users
+      operationId: listUsers
+      parameters:
+        - $ref: "#/components/parameters/page"
+        - $ref: "#/components/parameters/perPage"
+        - $ref: "#/components/parameters/sort"
+        - $ref: "#/components/parameters/filter"
+        - $ref: "#/components/parameters/search"
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/User"
+                  meta:
+                    $ref: "#/components/schemas/PaginationMetadata"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      tags: [Users]
+      summary: Create user
+      operationId: createUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserCreate"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /v1/users/{userId}:
+    get:
+      tags: [Users]
+      summary: Get user by ID
+      operationId: getUser
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: "#/components/parameters/include"
+      responses:
+        "200":
+          description: User found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      tags: [Users]
+      summary: Update user by ID
+      operationId: updateUser
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags: [Users]
+      summary: Delete user by ID
+      operationId: deleteUser
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /v1/users/{userId}/followers:
+    get:
+      tags: [Follows]
+      summary: List followers of a user
+      operationId: listUserFollowers
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: "#/components/parameters/page"
+        - $ref: "#/components/parameters/perPage"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/User"
+
+  /v1/users/{userId}/following:
+    get:
+      tags: [Follows]
+      summary: List users this user is following
+      operationId: listUserFollowing
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: "#/components/parameters/page"
+        - $ref: "#/components/parameters/perPage"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/User"
+
+  /v1/users/{userId}/compatibility/{otherUserId}:
+    get:
+      tags: [Compatibility]
+      summary: Get compatibility between two users
+      operationId: getPairCompatibility
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: otherUserId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserReadingCompatibility"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /v1/publishers:
+    get:
+      tags: [Publishers]
+      summary: List publishers
+      operationId: listPublishers
+      parameters:
+        - $ref: "#/components/parameters/page"
+        - $ref: "#/components/parameters/perPage"
+        - $ref: "#/components/parameters/sort"
+        - $ref: "#/components/parameters/filter"
+        - $ref: "#/components/parameters/search"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Publisher"
+                  meta:
+                    $ref: "#/components/schemas/PaginationMetadata"
+    post:
+      tags: [Publishers]
+      summary: Create publisher
+      operationId: createPublisher
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PublisherCreate"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Publisher"
+
+  /v1/publishers/{publisherId}:
+    get:
+      tags: [Publishers]
+      summary: Get publisher by ID
+      operationId: getPublisher
+      parameters:
+        - name: publisherId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Publisher"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      tags: [Publishers]
+      summary: Update publisher
+      operationId: updatePublisher
+      parameters:
+        - name: publisherId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PublisherUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Publisher"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags: [Publishers]
+      summary: Delete publisher
+      operationId: deletePublisher
+      parameters:
+        - name: publisherId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /v1/works:
+    get:
+      tags: [Works]
+      summary: List works
+      operationId: listWorks
+      parameters:
+        - $ref: "#/components/parameters/page"
+        - $ref: "#/components/parameters/perPage"
+        - $ref: "#/components/parameters/sort"
+        - $ref: "#/components/parameters/filter"
+        - $ref: "#/components/parameters/search"
+        - $ref: "#/components/parameters/include"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Work"
+                  meta:
+                    $ref: "#/components/schemas/PaginationMetadata"
+    post:
+      tags: [Works]
+      summary: Create work
+      operationId: createWork
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WorkCreate"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Work"
+
+  /v1/works/{workId}:
+    get:
+      tags: [Works]
+      summary: Get work by ID
+      operationId: getWork
+      parameters:
+        - name: workId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: "#/components/parameters/include"
+      responses:
+        "200":
+          description: Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Work"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      tags: [Works]
+      summary: Update work
+      operationId: updateWork
+      parameters:
+        - name: workId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WorkUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Work"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags: [Works]
+      summary: Delete work
+      operationId: deleteWork
+      parameters:
+        - name: workId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /v1/works/{workId}/authors:
+    get:
+      tags: [Works, Authors]
+      summary: List authors for a work
+      operationId: listWorkAuthors
+      parameters:
+        - name: workId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Author"
+    post:
+      tags: [Works, Authors]
+      summary: Link author to work
+      operationId: addWorkAuthor
+      parameters:
+        - name: workId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WorkAuthorLink"
+      responses:
+        "201":
+          description: Linked
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /v1/works/{workId}/authors/{authorId}:
+    delete:
+      tags: [Works, Authors]
+      summary: Remove author from a work
+      operationId: removeWorkAuthor
+      parameters:
+        - name: workId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: authorId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: Unlinked
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /v1/works/{workId}/genres:
+    get:
+      tags: [Works, Genres]
+      summary: List genres attached to a work
+      operationId: listWorkGenres
+      parameters:
+        - name: workId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Genre"
+    post:
+      tags: [Works, Genres]
+      summary: Attach a genre to a work
+      operationId: attachWorkGenre
+      parameters:
+        - name: workId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [genre_id]
+              properties:
+                genre_id:
+                  type: string
+                  format: uuid
+      responses:
+        "201":
+          description: Genre attached
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /v1/works/{workId}/genres/{genreId}:
+    delete:
+      tags: [Works, Genres]
+      summary: Detach a genre from a work
+      operationId: detachWorkGenre
+      parameters:
+        - name: workId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: genreId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: Genre detached
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /v1/editions:
+    get:
+      tags: [Editions]
+      summary: List editions
+      operationId: listEditions
+      parameters:
+        - $ref: "#/components/parameters/page"
+        - $ref: "#/components/parameters/perPage"
+        - $ref: "#/components/parameters/sort"
+        - $ref: "#/components/parameters/filter"
+        - $ref: "#/components/parameters/search"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Edition"
+                  meta:
+                    $ref: "#/components/schemas/PaginationMetadata"
+    post:
+      tags: [Editions]
+      summary: Create edition
+      operationId: createEdition
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MergedEditionCreate"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Edition"
+
+  /v1/editions/{editionId}:
+    get:
+      tags: [Editions]
+      summary: Get edition by ID
+      operationId: getEdition
+      parameters:
+        - name: editionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: "#/components/parameters/include"
+      responses:
+        "200":
+          description: Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Edition"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      tags: [Editions]
+      summary: Update edition
+      operationId: updateEdition
+      parameters:
+        - name: editionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EditionUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Edition"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags: [Editions]
+      summary: Delete edition
+      operationId: deleteEdition
+      parameters:
+        - name: editionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /v1/editions/{editionId}/authors:
+    get:
+      tags: [Editions, Authors]
+      summary: List authors for an edition
+      operationId: listEditionAuthors
+      parameters:
+        - name: editionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Author"
+    post:
+      tags: [Editions, Authors]
+      summary: Link author to edition
+      operationId: addEditionAuthor
+      parameters:
+        - name: editionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EditionAuthorLink"
+      responses:
+        "201":
+          description: Linked
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /v1/editions/{editionId}/authors/{authorId}:
+    delete:
+      tags: [Editions, Authors]
+      summary: Remove author from an edition
+      operationId: removeEditionAuthor
+      parameters:
+        - name: editionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: authorId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: Unlinked
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /v1/authors:
+    get:
+      tags: [Authors]
+      summary: List authors
+      operationId: listAuthors
+      parameters:
+        - $ref: "#/components/parameters/page"
+        - $ref: "#/components/parameters/perPage"
+        - $ref: "#/components/parameters/sort"
+        - $ref: "#/components/parameters/filter"
+        - $ref: "#/components/parameters/search"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Author"
+                  meta:
+                    $ref: "#/components/schemas/PaginationMetadata"
+    post:
+      tags: [Authors]
+      summary: Create author
+      operationId: createAuthor
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AuthorCreate"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Author"
+
+  /v1/authors/{authorId}:
+    get:
+      tags: [Authors]
+      summary: Get author by ID
+      operationId: getAuthor
+      parameters:
+        - name: authorId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: "#/components/parameters/include"
+      responses:
+        "200":
+          description: Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Author"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      tags: [Authors]
+      summary: Update author
+      operationId: updateAuthor
+      parameters:
+        - name: authorId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AuthorUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Author"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags: [Authors]
+      summary: Delete author
+      operationId: deleteAuthor
+      parameters:
+        - name: authorId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /v1/genres:
+    get:
+      tags: [Genres]
+      summary: List genres
+      operationId: listGenres
+      parameters:
+        - $ref: "#/components/parameters/page"
+        - $ref: "#/components/parameters/perPage"
+        - $ref: "#/components/parameters/sort"
+        - $ref: "#/components/parameters/filter"
+        - $ref: "#/components/parameters/search"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Genre"
+                  meta:
+                    $ref: "#/components/schemas/PaginationMetadata"
+    post:
+      tags: [Genres]
+      summary: Create genre
+      operationId: createGenre
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GenreCreate"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Genre"
+
+  /v1/genres/{genreId}:
+    get:
+      tags: [Genres]
+      summary: Get genre by ID
+      operationId: getGenre
+      parameters:
+        - name: genreId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: "#/components/parameters/include"
+      responses:
+        "200":
+          description: Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Genre"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      tags: [Genres]
+      summary: Update genre
+      operationId: updateGenre
+      parameters:
+        - name: genreId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GenreUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Genre"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags: [Genres]
+      summary: Delete genre
+      operationId: deleteGenre
+      parameters:
+        - name: genreId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /v1/reviews:
+    get:
+      tags: [Reviews]
+      summary: List reviews
+      operationId: listReviews
+      parameters:
+        - $ref: "#/components/parameters/page"
+        - $ref: "#/components/parameters/perPage"
+        - $ref: "#/components/parameters/sort"
+        - $ref: "#/components/parameters/filter"
+        - $ref: "#/components/parameters/search"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Review"
+                  meta:
+                    $ref: "#/components/schemas/PaginationMetadata"
+    post:
+      tags: [Reviews]
+      summary: Create review
+      operationId: createReview
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReviewCreate"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Review"
+
+  /v1/reviews/{reviewId}:
+    get:
+      tags: [Reviews]
+      summary: Get review by ID
+      operationId: getReview
+      parameters:
+        - name: reviewId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Review"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      tags: [Reviews]
+      summary: Update review
+      operationId: updateReview
+      parameters:
+        - name: reviewId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReviewUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Review"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags: [Reviews]
+      summary: Delete review
+      operationId: deleteReview
+      parameters:
+        - name: reviewId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /v1/bookshelves:
+    get:
+      tags: [Bookshelves]
+      summary: List bookshelves
+      operationId: listBookshelves
+      parameters:
+        - $ref: "#/components/parameters/page"
+        - $ref: "#/components/parameters/perPage"
+        - $ref: "#/components/parameters/sort"
+        - $ref: "#/components/parameters/filter"
+        - $ref: "#/components/parameters/search"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Bookshelf"
+                  meta:
+                    $ref: "#/components/schemas/PaginationMetadata"
+    post:
+      tags: [Bookshelves]
+      summary: Create bookshelf
+      operationId: createBookshelf
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BookshelfCreate"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Bookshelf"
+
+  /v1/bookshelves/{bookshelfId}:
+    get:
+      tags: [Bookshelves]
+      summary: Get bookshelf by ID
+      operationId: getBookshelf
+      parameters:
+        - name: bookshelfId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: "#/components/parameters/include"
+      responses:
+        "200":
+          description: Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Bookshelf"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      tags: [Bookshelves]
+      summary: Update bookshelf
+      operationId: updateBookshelf
+      parameters:
+        - name: bookshelfId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BookshelfUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Bookshelf"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags: [Bookshelves]
+      summary: Delete bookshelf
+      operationId: deleteBookshelf
+      parameters:
+        - name: bookshelfId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /v1/bookshelves/{bookshelfId}/works:
+    get:
+      tags: [Bookshelves, Works]
+      summary: List works in a bookshelf
+      operationId: listBookshelfWorks
+      parameters:
+        - name: bookshelfId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: "#/components/parameters/page"
+        - $ref: "#/components/parameters/perPage"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Work"
+    post:
+      tags: [Bookshelves, Works]
+      summary: Add work to bookshelf
+      operationId: addWorkToBookshelf
+      parameters:
+        - name: bookshelfId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BookshelfWorkLink"
+      responses:
+        "201":
+          description: Added
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /v1/follows:
+    get:
+      tags: [Follows]
+      summary: List user follow relationships
+      operationId: listFollows
+      parameters:
+        - $ref: "#/components/parameters/page"
+        - $ref: "#/components/parameters/perPage"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/UserFollows"
+
+  /v1/users/{userId}/follow:
+    post:
+      tags: [Follows]
+      summary: Follow a user
+      operationId: followUser
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "201":
+          description: Followed
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /v1/users/{userId}/unfollow:
+    delete:
+      tags: [Follows]
+      summary: Unfollow a user
+      operationId: unfollowUser
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: Unfollowed
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /v1/user_works:
+    get:
+      tags: [UserWorks]
+      summary: List user-work links
+      operationId: listUserWorks
+      parameters:
+        - $ref: "#/components/parameters/page"
+        - $ref: "#/components/parameters/perPage"
+        - $ref: "#/components/parameters/filter"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/UserWorks"
+    post:
+      tags: [UserWorks]
+      summary: Create user-work link
+      operationId: createUserWork
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserWorks"
+      responses:
+        "201":
+          description: Created
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /v1/user_works/{userId}/{workId}:
+    get:
+      tags: [UserWorks]
+      summary: Fetch a specific user-work record
+      operationId: getUserWork
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: workId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserWorks"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    patch:
+      tags: [UserWorks]
+      summary: Update a user-work record
+      operationId: updateUserWork
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: workId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserWorksUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserWorks"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags: [UserWorks]
+      summary: Delete a user-work record
+      operationId: deleteUserWork
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: workId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /v1/user_works/{userWorkId}:
+    patch:
+      tags: [UserWorks]
+      summary: Update reading progress (alternate path)
+      operationId: updateUserWorkByRecordId
+      parameters:
+        - name: userWorkId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserWorksUpdate"
+      responses:
+        "200":
+          description: Updated
+      delete:
+        tags: [UserWorks]
+        summary: Delete user-work link (alternate path)
+        operationId: deleteUserWorkByRecordId
+        parameters:
+          - name: userWorkId
+            in: path
+            required: true
+            schema:
+              type: string
+              format: uuid
+        responses:
+          "204":
+            description: Deleted
+
+  /v1/compatibility:
+    get:
+      tags: [Compatibility]
+      summary: List user compatibility scores
+      operationId: listCompatibility
+      parameters:
+        - $ref: "#/components/parameters/page"
+        - $ref: "#/components/parameters/perPage"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/UserReadingCompatibility"
+
+  /v1/compatibility/{userId1}/{userId2}:
+    get:
+      tags: [Compatibility]
+      summary: Fetch compatibility between two users
+      operationId: getCompatibilityPair
+      parameters:
+        - name: userId1
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: userId2
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserReadingCompatibility"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /v1/recommendations:
+    get:
+      tags: [Recommendations]
+      summary: List recommendation requests
+      operationId: listRecommendations
+      parameters:
+        - $ref: "#/components/parameters/page"
+        - $ref: "#/components/parameters/perPage"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/UserBookRecommendation"
+    post:
+      tags: [Recommendations]
+      summary: Create a recommendation request
+      operationId: createRecommendationRequest
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserBookRecommendationCreate"
+      responses:
+        "201":
+          description: Created
+
+  /v1/recommendations/{recommendationId}/results:
+    get:
+      tags: [Recommendations]
+      summary: List results for a recommendation request
+      operationId: listRecommendationResults
+      parameters:
+        - name: recommendationId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/RecommendationResult"
+
+  /v1/helpful_votes:
+    get:
+      tags: [HelpfulVotes]
+      summary: List all helpful votes
+      operationId: listHelpfulVotes
+      parameters:
+        - $ref: "#/components/parameters/page"
+        - $ref: "#/components/parameters/perPage"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ReviewHelpfulVote"
+    post:
+      tags: [HelpfulVotes]
+      summary: Mark a review as helpful
+      operationId: createHelpfulVote
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReviewHelpfulVoteCreate"
+      responses:
+        "201":
+          description: Created
+
+  /v1/helpful_votes/{userId}/{reviewId}:
+    delete:
+      tags: [HelpfulVotes]
+      summary: Remove a helpful vote
+      operationId: deleteHelpfulVote
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: reviewId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: Unmarked
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    UserAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      x-scopes:
+        user: Normal user access
+    AdminAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      x-scopes:
+        admin: Administrator privileges
+
+  parameters:
+    page:
+      name: page
+      in: query
+      description: Page number
+      schema:
+        type: integer
+        default: 1
+    perPage:
+      name: per_page
+      in: query
+      description: Items per page
+      schema:
+        type: integer
+        default: 20
+    sort:
+      name: sort
+      in: query
+      description: Sort field
+      schema:
+        type: string
+    filter:
+      name: filter
+      in: query
+      description: Filter query
+      schema:
+        type: string
+    search:
+      name: search
+      in: query
+      description: Text search across trigram indexes
+      schema:
+        type: string
+    include:
+      name: include
+      in: query
+      description: Related resources to embed
+      schema:
+        type: array
+        items:
+          enum: [authors, editions, genres, publisher]
+      explode: false
+
+  responses:
+    BadRequest:
+      description: Invalid request
+    Unauthorized:
+      description: Unauthorized
+    NotFound:
+      description: Resource not found
+    Conflict:
+      description: Resource conflict
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: "Resource conflict"
+              conflicting_fields:
+                type: array
+                items:
+                  type: string
+                example: ["email"]
+
+  headers:
+    Cache-Control:
+      schema:
+        type: string
+        enum: [no-cache, public, private]
+      description: Cache control directive
+
+  schemas:
+    AuthorRoleEnum:
+      type: string
+      enum: [author, illustrator, translator, editor, publisher, other]
+    BookFormatEnum:
+      type: string
+      enum: [hardcover, paperback, ebook, audiobook, mass_market_paperback, library_binding, spiral_bound, other]
+    ReadingStatusEnum:
+      type: string
+      enum: [want_to_read, reading, read]
+
+    PaginationMetadata:
+      type: object
+      properties:
+        totalItems:
+          type: integer
+        totalPages:
+          type: integer
+        currentPage:
+          type: integer
+        perPage:
+          type: integer
+
+    Location:
+      type: object
+      properties:
+        lat:
+          type: number
+          format: decimal
+          minimum: -90
+          maximum: 90
+          example: 40.7128
+        long:
+          type: number
+          format: decimal
+          minimum: -180
+          maximum: 180
+          example: -74.0060
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+        username:
+          type: string
+        display_name:
+          type: string
+        bio:
+          type: string
+        location_lat:
+          type: number
+        location_long:
+          type: number
+        is_location_private:
+          type: boolean
+        avatar_url:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+
+    UserCreate:
+      type: object
+      required: [email, password, username]
+      properties:
+        email:
+          type: string
+          pattern: "^[^@]+@[^@]+\\.[^@]+$"
+        password:
+          type: string
+        username:
+          type: string
+        display_name:
+          type: string
+        bio:
+          type: string
+
+    UserUpdate:
+      type: object
+      properties:
+        email:
+          type: string
+          pattern: "^[^@]+@[^@]+\\.[^@]+$"
+        username:
+          type: string
+        display_name:
+          type: string
+        bio:
+          type: string
+        location_lat:
+          type: number
+        location_long:
+          type: number
+        is_location_private:
+          type: boolean
+        avatar_url:
+          type: string
+
+    Publisher:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+
+    PublisherCreate:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+
+    PublisherUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+
+    Work:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        description:
+          type: string
+        language:
+          type: string
+        cover_image_url:
+          type: string
+        publisher_id:
+          type: string
+          format: uuid
+        goodreads_url:
+          type: string
+        goodreads_rating:
+          type: number
+          format: float
+        average_rating:
+          type: number
+          format: float
+        ratings_count:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+        authors:
+          type: array
+          items:
+            $ref: "#/components/schemas/Author"
+          x-embedded: true
+        editions:
+          type: array
+          items:
+            $ref: "#/components/schemas/Edition"
+          x-embedded: true
+
+    WorkCreate:
+      type: object
+      required: [title]
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        language:
+          type: string
+        cover_image_url:
+          type: string
+        publisher_id:
+          type: string
+          format: uuid
+
+    WorkUpdate:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        language:
+          type: string
+        cover_image_url:
+          type: string
+        publisher_id:
+          type: string
+          format: uuid
+
+    Edition:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        work_id:
+          type: string
+          format: uuid
+        isbn_10:
+          type: string
+        isbn_13:
+          type: string
+        title:
+          type: string
+        publication_date:
+          type: string
+          format: date
+        page_count:
+          type: integer
+        cover_image_url:
+          type: string
+        publisher_id:
+          type: string
+          format: uuid
+        format:
+          $ref: "#/components/schemas/BookFormatEnum"
+        language:
+          type: string
+        average_rating:
+          type: number
+          format: float
+        ratings_count:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+
+    # Merge x-ai-context from openapi_deep with openapi_one's EditionCreate
+    MergedEditionCreate:
+      type: object
+      required: [work_id, title]
+      properties:
+        work_id:
+          type: string
+          format: uuid
+        isbn_10:
+          type: string
+          pattern: '^\d{10}$'
+          x-ai-context:
+            validation: strict
+            example: "0123456789"
+        isbn_13:
+          type: string
+          pattern: '^\d{13}$'
+          example: "9780123456786"
+        title:
+          type: string
+        publication_date:
+          type: string
+          format: date
+        page_count:
+          type: integer
+        cover_image_url:
+          type: string
+        publisher_id:
+          type: string
+          format: uuid
+        format:
+          $ref: "#/components/schemas/BookFormatEnum"
+        language:
+          type: string
+
+    EditionUpdate:
+      type: object
+      properties:
+        isbn_10:
+          type: string
+        isbn_13:
+          type: string
+        title:
+          type: string
+        publication_date:
+          type: string
+          format: date
+        page_count:
+          type: integer
+        cover_image_url:
+          type: string
+        publisher_id:
+          type: string
+          format: uuid
+        format:
+          $ref: "#/components/schemas/BookFormatEnum"
+        language:
+          type: string
+
+    Author:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        biography:
+          type: string
+        photo_url:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+
+    AuthorCreate:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        biography:
+          type: string
+        photo_url:
+          type: string
+
+    AuthorUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        biography:
+          type: string
+        photo_url:
+          type: string
+
+    Genre:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        parent_genre_id:
+          type: string
+          format: uuid
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+
+    GenreCreate:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        parent_genre_id:
+          type: string
+          format: uuid
+
+    GenreUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        parent_genre_id:
+          type: string
+          format: uuid
+
+    Review:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        work_id:
+          type: string
+          format: uuid
+        edition_id:
+          type: string
+          format: uuid
+        rating:
+          type: integer
+        review_text:
+          type: string
+        contains_spoilers:
+          type: boolean
+        helpful_votes:
+          type: integer
+        is_private:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+
+    # Merged review schema with examples
+    ReviewCreate:
+      type: object
+      required: [user_id, work_id, rating]
+      properties:
+        user_id:
+          type: string
+          format: uuid
+        work_id:
+          type: string
+          format: uuid
+        edition_id:
+          type: string
+          format: uuid
+        rating:
+          type: integer
+          example: 5
+        review_text:
+          type: string
+          example: "Life-changing read!"
+        contains_spoilers:
+          type: boolean
+        is_private:
+          type: boolean
+
+    ReviewUpdate:
+      type: object
+      properties:
+        rating:
+          type: integer
+        review_text:
+          type: string
+        contains_spoilers:
+          type: boolean
+        is_private:
+          type: boolean
+
+    Bookshelf:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        is_public:
+          type: boolean
+        is_default:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+
+    BookshelfCreate:
+      type: object
+      required: [user_id, name]
+      properties:
+        user_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        is_public:
+          type: boolean
+
+    BookshelfUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        is_public:
+          type: boolean
+
+    BookshelfWorkLink:
+      type: object
+      required: [work_id]
+      properties:
+        work_id:
+          type: string
+          format: uuid
+
+    UserFollows:
+      type: object
+      properties:
+        follower_id:
+          type: string
+          format: uuid
+        following_id:
+          type: string
+          format: uuid
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+
+    # Merged user-works schema with x-ai-context from openapi_deep
+    UserWorks:
+      type: object
+      x-ai-context:
+        state_tracking: reading_progress
+      properties:
+        user_id:
+          type: string
+          format: uuid
+        work_id:
+          type: string
+          format: uuid
+        edition_id:
+          type: string
+          format: uuid
+        status:
+          $ref: "#/components/schemas/ReadingStatusEnum"
+        progress_percent:
+          type: integer
+          minimum: 0
+          maximum: 100
+          example: 75
+        start_date:
+          type: string
+          format: date
+        completion_date:
+          type: string
+          format: date
+        is_private:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+
+    UserWorksUpdate:
+      type: object
+      properties:
+        edition_id:
+          type: string
+          format: uuid
+        status:
+          $ref: "#/components/schemas/ReadingStatusEnum"
+        progress_percent:
+          type: integer
+          minimum: 0
+          maximum: 100
+        start_date:
+          type: string
+          format: date
+        completion_date:
+          type: string
+          format: date
+        is_private:
+          type: boolean
+
+    UserReadingCompatibility:
+      type: object
+      properties:
+        user_id1:
+          type: string
+          format: uuid
+        user_id2:
+          type: string
+          format: uuid
+        compatibility_score:
+          type: number
+          format: float
+        last_calculated_at:
+          type: string
+          format: date-time
+
+    UserBookRecommendation:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        query_text:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+
+    UserBookRecommendationCreate:
+      type: object
+      required: [user_id]
+      properties:
+        user_id:
+          type: string
+          format: uuid
+        query_text:
+          type: string
+
+    RecommendationResult:
+      type: object
+      properties:
+        recommendation_id:
+          type: string
+          format: uuid
+        work_id:
+          type: string
+          format: uuid
+        confidence_score:
+          type: number
+          format: float
+        rank:
+          type: integer
+        reasoning:
+          type: string
+
+    ReviewHelpfulVote:
+      type: object
+      properties:
+        user_id:
+          type: string
+          format: uuid
+        review_id:
+          type: string
+          format: uuid
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+
+    ReviewHelpfulVoteCreate:
+      type: object
+      required: [user_id, review_id]
+      properties:
+        user_id:
+          type: string
+          format: uuid
+        review_id:
+          type: string
+          format: uuid
+
+    WorkAuthorLink:
+      type: object
+      required: [author_id]
+      properties:
+        author_id:
+          type: string
+          format: uuid
+        author_order:
+          type: integer
+        role:
+          $ref: "#/components/schemas/AuthorRoleEnum"
+
+    EditionAuthorLink:
+      type: object
+      required: [author_id]
+      properties:
+        author_id:
+          type: string
+          format: uuid
+        author_order:
+          type: integer
+        role:
+          $ref: "#/components/schemas/AuthorRoleEnum"
+
+    ErrorResponse:
+      type: object
+      properties:
+        code:
+          type: string
+          example: "validation_error"
+        messages:
+          type: array
+          items:
+            type: string
+          example: ["Invalid ISBN format"]
